@@ -9,7 +9,7 @@ But added more functions:
   - support execute remote command from server.
   - remove server alive checker, because it cause some latency.
 
-![screenshot](https://raw.githubusercontent.com/yftzeng/gossh/main/images/Screenshot.png)
+![screenshot](https://raw.githubusercontent.com/yftzeng/gossh/main/images/Screenshot-example.png)
 
 ## Installation
 
