@@ -3,11 +3,11 @@
 This slim script is forked from https://github.com/robinparisi/ssh-manager.
 
 But added more functions:
-    - support sepcific identity_file.
-    - support upload/push file to server with scp.
-    - support download/pull file from server with scp.
-    - support execute remote command from server.
-    - remove server alive checker, because it cause some latency.
+  - support sepcific identity_file.
+  - support upload/push file to server with scp.
+  - support download/pull file from server with scp.
+  - support execute remote command from server.
+  - remove server alive checker, because it cause some latency.
 
 ## Installation
 
