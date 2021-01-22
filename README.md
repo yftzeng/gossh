@@ -9,7 +9,7 @@ But added more functions:
   - support execute remote command from server.
   - remove server alive checker, because it cause some latency.
 
-![screenshot](https://github.com/yftzeng/gossh/raw/main/images/screenshot.png)
+![screenshot](https://raw.githubusercontent.com/yftzeng/gossh/main/images/Screenshot.png)
 
 ## Installation
 
@@ -38,13 +38,13 @@ File database is named ".gossh".
 
     Availables commands
     ==============================================
-	/home/ant/bin/gossh cc		<alias> [username]								connect to server
+	/home/ant/bin/gossh cc		<alias> [username]				connect to server
 	/home/ant/bin/gossh add		<alias>:<user>:<host>:[port]:[identity_file]	add new server
-	/home/ant/bin/gossh del		<alias>											delete server
-	/home/ant/bin/gossh push	<alias>											upload file to server
-	/home/ant/bin/gossh pull	<alias>											download file from server
-	/home/ant/bin/gossh cmd		<alias>											run command on server
-	/home/ant/bin/gossh exp														export config
+	/home/ant/bin/gossh del		<alias>						delete server
+	/home/ant/bin/gossh push	<alias>						upload file to server
+	/home/ant/bin/gossh pull	<alias>						download file from server
+	/home/ant/bin/gossh cmd		<alias>						run command on server
+	/home/ant/bin/gossh exp								export config
 
     Connect to server
     $ gossh cc gcos
