@@ -1,0 +1,314 @@
+#!/bin/bash
+#########################################
+# Original script by Errol Byrd
+#########################################
+# Modified by Robin Parisi
+#########################################
+# Modified by Yi-Feng Tzeng <yftzeng+nospam@gmail.com>
+#================== Globals ==================================================
+
+# Version
+VERSION="0.7"
+
+# Configuration
+HOST_FILE="$HOME/.gossh"
+DATA_DELIM=":"
+DATA_ALIAS=1
+DATA_HUSER=2
+DATA_HADDR=3
+DATA_HPORT=4
+DATA_HIDF=5
+PING_DEFAULT_TTL=20
+SSH_DEFAULT_PORT=22
+
+#================== Functions ================================================
+
+function exec_ping() {
+	case $(uname) in
+		MINGW*)
+			ping -n 1 -i $PING_DEFAULT_TTL $@
+			;;
+		*)
+			ping -c1 -t$PING_DEFAULT_TTL $@
+			;;
+	esac
+}
+
+function test_host() {
+	exec_ping $* > /dev/null
+	if [ $? != 0 ] ; then
+		echo -n "["
+		cecho -n -red "KO"
+		echo -n "]"
+	else
+		echo -n "["
+		cecho -n -green "UP"
+		echo -n "]"
+	fi
+}
+
+function separator() {
+	echo -e "=============================================="
+}
+
+function list_commands() {
+    echo
+	echo -e "Availables commands"
+	separator
+	echo -e "$0 cc\t\t<alias> [username]\t\t\t\tconnect to server"
+	echo -e "$0 add\t\t<alias>:<user>:<host>:[port]:[identity_file]\tadd new server"
+	echo -e "$0 del\t\t<alias>\t\t\t\t\t\tdelete server"
+	echo -e "$0 push\t<alias>\t\t\t\t\t\tupload file to server"
+	echo -e "$0 pull\t<alias>\t\t\t\t\t\tdownload file from server"
+	echo -e "$0 cmd\t\t<alias>\t\t\t\t\t\trun command on server"
+	echo -e "$0 exp\t\t\t\t\t\t\t\texport config"
+}
+
+function probe() {
+	als=$1
+	grep -w -e $als $HOST_FILE > /dev/null
+	return $?
+}
+
+function get_raw() {
+	als=$1
+	grep -w -e $als $HOST_FILE 2> /dev/null
+}
+
+function get_user() {
+	als=$1
+	get_raw "$als" | awk -F "$DATA_DELIM" '{ print $'$DATA_HUSER' }'
+}
+
+function get_addr() {
+	als=$1
+	get_raw "$als" | awk -F "$DATA_DELIM" '{ print $'$DATA_HADDR' }'
+}
+
+function get_port() {
+	als=$1
+	get_raw "$als" | awk -F "$DATA_DELIM" '{ print $'$DATA_HPORT'}'
+}
+
+function get_idf() {
+	als=$1
+	get_raw "$als" | awk -F "$DATA_DELIM" '{ print $'$DATA_HIDF'}'
+}
+
+function server_cc() {
+    probe "$alias"
+    if [ $? -eq 0 ]; then
+        if [ "$user" == ""  ]; then
+            user=$(get_user "$alias")
+        fi
+        addr=$(get_addr "$alias")
+        port=$(get_port "$alias")
+        # Use default port when parameter is missing
+        if [ "$port" == "" ]; then
+            port=$SSH_DEFAULT_PORT
+        fi
+        idf=$HOME/$(get_idf "$alias")
+        if [ "$idf" != "" ]; then
+            idf="-i $idf"
+        fi
+        echo "connecting to '$alias' ($addr:$port)"
+        ssh $user@$addr -p $port $idf
+    else
+        echo "$0: unknown alias '$alias'"
+        exit 1
+    fi
+}
+
+function server_add() {
+	probe "$alias"
+	if [ $? -eq 0 ]; then
+		as	echo "$0: alias '$alias' is in use"
+	else
+		echo "$alias$DATA_DELIM$user" >> $HOST_FILE
+		echo "new alias '$alias' added"
+	fi
+}
+
+function server_push() {
+    probe "$alias"
+    if [ $? -eq 0 ]; then
+        if [ "$file" == ""  ]; then
+            echo "$0: unknown file"
+            exit 1
+        fi
+        user=$(get_user "$alias")
+        addr=$(get_addr "$alias")
+        port=$(get_port "$alias")
+        # Use default port when parameter is missing
+        if [ "$port" == "" ]; then
+            port=$SSH_DEFAULT_PORT
+        fi
+        idf=$HOME/$(get_idf "$alias")
+        if [ "$idf" != "" ]; then
+            idf="-i $idf"
+        fi
+        echo "pushing $file to '$alias' ($addr:$port)"
+        newfile=$(basename "$file")
+        scp -2Crp -P $port $idf "$file" $user@$addr:$newfile
+    else
+        echo "$0: unknown alias '$alias'"
+        exit 1
+    fi
+}
+
+function server_pull() {
+    probe "$alias"
+    if [ $? -eq 0 ]; then
+        if [ "$file" == ""  ]; then
+            echo "$0: unknown file"
+            exit 1
+        fi
+        user=$(get_user "$alias")
+        addr=$(get_addr "$alias")
+        port=$(get_port "$alias")
+        # Use default port when parameter is missing
+        if [ "$port" == "" ]; then
+            port=$SSH_DEFAULT_PORT
+        fi
+        idf=$HOME/$(get_idf "$alias")
+        if [ "$idf" != "" ]; then
+            idf="-i $idf"
+        fi
+        echo "pulling $file from '$alias' ($addr:$port)"
+        newfile="${file##*/}"
+        scp -2Crp -P $port $idf $user@$addr:$file $newfile
+    else
+        echo "$0: unknown alias '$alias'"
+        exit 1
+    fi
+}
+
+function server_command() {
+    probe "$alias"
+    if [ $? -eq 0 ]; then
+        user=$(get_user "$alias")
+        addr=$(get_addr "$alias")
+        port=$(get_port "$alias")
+        # Use default port when parameter is missing
+        if [ "$port" == "" ]; then
+            port=$SSH_DEFAULT_PORT
+        fi
+        idf=$HOME/$(get_idf "$alias")
+        if [ "$idf" != "" ]; then
+            idf="-i $idf"
+        fi
+        echo "connecting to '$alias' ($addr:$port)"
+        ssh $user@$addr -p $port $idf $command
+    else
+        echo "$0: unknown alias '$alias'"
+        exit 1
+    fi
+}
+
+function cecho() {
+	while [ "$1" ]; do
+		case "$1" in
+			-normal)        color="\033[00m" ;;
+			-black)         color="\033[30;01m" ;;
+			-red)           color="\033[31;01m" ;;
+			-green)         color="\033[32;01m" ;;
+			-yellow)        color="\033[33;01m" ;;
+			-blue)          color="\033[34;01m" ;;
+			-magenta)       color="\033[35;01m" ;;
+			-cyan)          color="\033[36;01m" ;;
+			-white)         color="\033[37;01m" ;;
+			-n)             one_line=1;   shift ; continue ;;
+			*)              echo -n "$1"; shift ; continue ;;
+		esac
+	shift
+	echo -en "$color"
+	echo -en "$1"
+	echo -en "\033[00m"
+	shift
+done
+if [ ! $one_line ]; then
+	echo
+fi
+}
+
+#=============================================================================
+
+cmd=$1
+alias=$2
+user=$3
+file=$3
+command=$3
+
+# if config file doesn't exist
+if [ ! -f $HOST_FILE ]; then touch "$HOST_FILE"; fi
+
+# without args
+if [ $# -eq 0 ]; then
+	echo "List of availables servers for user $(whoami) "
+	separator
+	while IFS=: read label user ip port idf
+	do
+	#test_host $ip
+	#echo -ne "\t"
+	cecho -n -blue $label
+	echo -ne "\t" ' => '
+	cecho -n -red $user
+	cecho -n -yellow "@"
+	cecho -n -white $ip
+	echo -ne "\t\t" ' -> '
+	if [ "$port" == "" ]; then
+		port=$SSH_DEFAULT_PORT
+	fi
+	cecho -yellow $port
+	if [ "$idf" != "" ]; then
+        echo -ne "\t" ' with '
+        cecho -magenta $idf
+	fi
+	echo
+done < $HOST_FILE
+
+list_commands
+
+exit 0
+fi
+
+case "$cmd" in
+	# Connect to host
+	cc )
+		server_cc
+		;;
+
+	# Add new alias
+	add )
+		server_add
+		;;
+	# Export config
+	exp )
+		echo
+		cat $HOST_FILE
+		;;
+	# Delete ali
+	del )
+		probe "$alias"
+		if [ $? -eq 0 ]; then
+			cat $HOST_FILE | sed '/^'$alias$DATA_DELIM'/d' > /tmp/.tmp.$$
+			mv /tmp/.tmp.$$ $HOST_FILE
+			echo "alias '$alias' removed"
+		else
+			echo "$0: unknown alias '$alias'"
+		fi
+		;;
+	push )
+		server_push
+		;;
+	pull )
+		server_pull
+		;;
+    cmd )
+        server_command
+        ;;
+	* )
+		echo "$0: unrecognised command '$cmd'"
+		exit 1
+		;;
+esac
